@@ -13,6 +13,8 @@ CopyAssistant 是面向 Windows 的剪贴板 AI 助手。复制一段文字或�
 
 自动处理默认关闭。开启后，每次新复制的内容会发送到当前选择的服务。进入设置时自动关闭，以免发送正在复制的配置项。运行中的请求结束后，只处理等待期间最新的一项。关闭窗口会结束监听。
 
+主窗口默认置顶，切到浏览器或阅读器时仍会显示在上方。取消工具栏里的「总是置顶」可恢复普通窗口，重启后会保留选择。
+
 图片需要复制到剪贴板。复制资源管理器中的文件只提供文件路径。图片按原分辨率转为 PNG 后发送，编码后的大小上限为 20 MiB。
 
 ## API 配置
@@ -47,7 +49,9 @@ Set-Location code/copy_assistant
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\build_windows.ps1
 ```
 
-ZIP 生成在 `dist/`。PySide、Shiboken 和 Qt DLL 作为独立文件保留在解压目录中，可以替换成兼容的重新构建版本。对应源码位置和组件版本见 ZIP 内的 `third_party/COMPONENTS.txt`。
+构建完成后，可直接运行 `dist/CopyAssistant/CopyAssistant.exe`，或解压 `dist/` 下的 ZIP 后运行。请将 EXE 和同目录的 `_internal/` 一起保留。`build/` 存放 PyInstaller 的中间文件，其中的 EXE 缺少运行时依赖。
+
+PySide、Shiboken 和 Qt DLL 作为独立文件保留在解压目录中，可以替换成兼容的重新构建版本。对应源码位置和组件版本见 ZIP 内的 `third_party/COMPONENTS.txt`。
 
 ## 许可证
 

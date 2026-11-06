@@ -6,7 +6,7 @@ from queue import Empty, SimpleQueue
 from threading import Thread
 
 from keyring.errors import KeyringError
-from PySide6.QtCore import Qt, QTimer
+from PySide6.QtCore import QSignalBlocker, Qt, QTimer
 from PySide6.QtGui import QClipboard, QPixmap
 from PySide6.QtWidgets import (
     QCheckBox,
@@ -60,6 +60,7 @@ class MainWindow(QMainWindow):
         self.editing_settings = False
         self.outcomes: SimpleQueue[tuple[str, str, str | None]] = SimpleQueue()
         self.setWindowTitle(f"{APP_NAME} {VERSION}")
+        self.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint, settings.stay_on_top)
         self.resize(*WINDOW_SIZE)
         self.build_window()
         self.refresh_profiles()
@@ -84,11 +85,17 @@ class MainWindow(QMainWindow):
         self.automatic = QCheckBox("自动处理")
         self.automatic.setToolTip("开启后，新复制的内容将发送给当前 AI 服务。")
         self.automatic.toggled.connect(self.auto_changed)
+        self.stay_on_top = QCheckBox("总是置顶")
+        self.stay_on_top.setChecked(self.settings.stay_on_top)
+        self.stay_on_top.toggled.connect(self.set_stay_on_top)
         self.process_button = QPushButton("处理")
         self.process_button.clicked.connect(self.process_preview)
         settings_button = QPushButton("设置")
         settings_button.clicked.connect(self.open_settings)
-        for widget in (self.services, self.modes, self.automatic, self.process_button, settings_button):
+        for widget in (
+            self.services, self.modes, self.automatic, self.stay_on_top,
+            self.process_button, settings_button,
+        ):
             controls.addWidget(widget)
         layout.addLayout(controls)
 
@@ -162,6 +169,22 @@ class MainWindow(QMainWindow):
         self.process_button.setEnabled(
             self.source is not None and not self.busy and self.services.count() > 0
         )
+
+    def set_stay_on_top(self, enabled: bool) -> None:
+        """Save the preference and apply it without closing the window."""
+        updated = replace(self.settings, stay_on_top=enabled)
+        try:
+            self.store.save(updated)
+        except OSError:
+            with QSignalBlocker(self.stay_on_top):
+                self.stay_on_top.setChecked(self.settings.stay_on_top)
+            self.status.setText("无法保存置顶设置。")
+            return
+        self.settings = updated
+        was_visible = self.isVisible()
+        self.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint, enabled)
+        if was_visible:
+            self.show()
 
     def preview_clipboard(self) -> None:
         """Read and display the current clipboard snapshot."""

@@ -15,7 +15,7 @@ from typing import cast
 from unittest.mock import Mock, patch
 from uuid import uuid4
 
-from PySide6.QtCore import QMimeData, QObject, Signal
+from PySide6.QtCore import QMimeData, QObject, Qt, Signal
 from PySide6.QtGui import QClipboard, QImage
 from PySide6.QtWidgets import QApplication
 
@@ -176,11 +176,15 @@ class SettingsTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             store = SettingsStore(Path(temporary))
             self.assertEqual(store.load(), Settings())
-            settings = replace(Settings(), target_language="日语")
+            settings = replace(Settings(), target_language="日语", stay_on_top=False)
             settings.prompts[Mode.EXPLAIN] = "使用通俗语言"
             store.save(settings)
             self.assertEqual(store.load(), settings)
             self.assertNotIn("api_key", store.path.read_text(encoding="utf-8"))
+            legacy = json.loads(store.path.read_text(encoding="utf-8"))
+            del legacy["stay_on_top"]
+            store.path.write_text(json.dumps(legacy), encoding="utf-8")
+            self.assertEqual(store.load(), replace(settings, stay_on_top=True))
 
     def test_windows_credential_persists_and_is_scoped_to_endpoint(self) -> None:
         profile = replace(DEEPSEEK_PROFILE, id=uuid4().hex)
@@ -236,6 +240,21 @@ class ClipboardTests(unittest.TestCase):
         self.assertEqual(payload["model"], "second")
         self.assertEqual(payload["messages"][1]["content"][1]["type"], "image_url")
         self.assertEqual(self.window.result.toPlainText(), "测试结果")
+
+    def test_stay_on_top_toggle_keeps_the_window_visible_and_saves(self) -> None:
+        flag = Qt.WindowType.WindowStaysOnTopHint
+        self.window.show()
+        self.assertTrue(self.window.windowFlags() & flag)
+
+        self.window.stay_on_top.click()
+        self.assertFalse(self.window.windowFlags() & flag)
+        self.assertFalse(self.window.store.load().stay_on_top)
+        self.assertTrue(self.window.isVisible())
+
+        self.window.stay_on_top.click()
+        self.assertTrue(self.window.windowFlags() & flag)
+        self.assertTrue(self.window.store.load().stay_on_top)
+        self.assertTrue(self.window.isVisible())
 
     def test_latest_only_and_own_write_is_ignored(self) -> None:
         self.window.automatic.setChecked(True)

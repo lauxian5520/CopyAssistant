@@ -12,7 +12,7 @@ from urllib.parse import urlsplit
 
 
 APP_NAME = "CopyAssistant"
-VERSION = "0.1.0"
+VERSION = "0.1.1"
 DEVELOPMENT_DATA_DIR = Path("../../data/copy_assistant")
 PACKAGED_DATA_DIR = Path(APP_NAME, "data", "copy_assistant")
 SETTINGS_FILENAME = "settings.json"
@@ -78,6 +78,7 @@ class Settings:
     active_profile_id: str = DEEPSEEK_PROFILE.id
     target_language: str = "简体中文"
     prompts: dict[Mode, str] = field(default_factory=DEFAULT_PROMPTS.copy)
+    stay_on_top: bool = True
 
     def system_prompt(self, mode: Mode) -> str:
         """Resolve the translation target in the configured prompt."""
@@ -131,6 +132,7 @@ class SettingsStore:
             active_profile_id=values["active_profile_id"],
             target_language=values["target_language"],
             prompts=DEFAULT_PROMPTS | {Mode(mode): text for mode, text in values["prompts"].items()},
+            stay_on_top=values.get("stay_on_top", Settings.stay_on_top),
         )
 
     def save(self, settings: Settings) -> None:
